@@ -6,3 +6,8 @@ tf_files/
 localMac/
 *.docx
 *.numbers
+.cache/
+.ipython/
+.local/
+data/
+workingdir/
