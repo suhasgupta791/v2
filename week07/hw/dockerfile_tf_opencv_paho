@@ -1,0 +1,68 @@
+# FROM cudabase-dev
+FROM w251/cuda:dev-tx2-4.3_b132
+
+# FROM Keras
+FROM w251/keras:dev-tx2-4.3_b132-tf1
+RUN apt update && apt install python3-matplotlib python3-pil wget -y
+
+RUN apt update && apt install -y python3-pip
+
+RUN /usr/bin/yes | apt-get install vim
+
+###### install the c++ version of protobuf ####
+RUN pip3 uninstall -y protobuf
+RUN pip3 install cython
+
+RUN mkdir /protobuf
+WORKDIR /protobuf
+RUN git clone -b '3.6.x' https://github.com/google/protobuf.git . && \
+    ./autogen.sh && \
+    ./configure --prefix=/usr/local 
+
+RUN make -j6 && make install
+RUN ldconfig
+
+WORKDIR /protobuf/python
+RUN python3 setup.py build --cpp_implementation
+RUN python3 setup.py install --cpp_implementation
+RUN rm -fr /protobuf
+WORKDIR /notebooks
+###########
+RUN git clone --recursive https://github.com/NVIDIA-Jetson/tf_trt_models.git
+WORKDIR tf_trt_models
+RUN ./install.sh python3
+
+RUN apt install -y libhdf5-serial-dev hdf5-tools libhdf5-dev zlib1g-dev zip libjpeg8-dev
+RUN pip3 install -U numpy==1.16.1 future==0.17.1 mock==3.0.5 h5py==2.9.0 keras_preprocessing==1.0.5 keras_applications==1.0.8 gast==0.2.2 enum34 futures
+
+# if we want to go back to tensorflow 1
+RUN pip3 install --pre --extra-index-url https://developer.download.nvidia.com/compute/redist/jp/v43 "tensorflow-gpu<2"
+
+# Open CV
+ARG URL=http://169.44.201.108:7002/jetpacks/4.3
+RUN apt-get update && apt install -y git pkg-config wget build-essential cmake unzip
+RUN curl $URL/libopencv_3.3.1-2-g31ccdfe11_arm64.deb  -so libopencv_3.3.1-2-g31ccdfe11_arm64.deb
+RUN curl $URL/libopencv-dev_3.3.1-2-g31ccdfe11_arm64.deb -so libopencv-dev_3.3.1-2-g31ccdfe11_arm64.deb
+RUN curl $URL/libopencv-python_3.3.1-2-g31ccdfe11_arm64.deb -so libopencv-python_3.3.1-2-g31ccdfe11_arm64.deb
+RUN apt remove -y libopencv-calib3d-dev libopencv-core-dev 
+RUN apt install -y  libtbb-dev libavcodec-dev libavformat-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgtk2.0-dev
+RUN apt install -y libswscale-dev libv4l-dev
+RUN dpkg -i *.deb
+RUN apt install -y libcanberra-gtk-module libcanberra-gtk3-module libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev 
+
+# PAHO MQTT 
+WORKDIR /tmp
+RUN apt install -y mosquitto-clients mosquitto
+RUN pip3 install numpy paho-mqtt 
+
+# Expose MQTT ports 
+EXPOSE 1883
+
+# Environment
+ENV ARCH=aarch64
+ENV PATH /usr/sbin:$PATH
+ENV DISPLAY :0
+
+WORKDIR /tmp
+# RUN rm *.deb
+RUN rm -f /tmp/*.deb
