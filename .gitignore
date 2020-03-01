@@ -16,3 +16,5 @@ workingdir/
 .python_history*
 .viminfo
 .DS_Store
+.nv*
+image_files/
