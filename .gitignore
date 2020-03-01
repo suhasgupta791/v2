@@ -15,4 +15,4 @@ workingdir/
 .bash_history*
 .python_history*
 .viminfo
-.nv*
+.DS_Store
