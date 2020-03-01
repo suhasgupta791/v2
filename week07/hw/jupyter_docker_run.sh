@@ -2,7 +2,7 @@
 
 docker_id=`sudo docker run \
 		--privileged \
-		-v $(pwd):/notebooks \
+		-v $(pwd):/tmp \
 		--rm \
 		-p 8888:8888 \
 		--name hw07 \

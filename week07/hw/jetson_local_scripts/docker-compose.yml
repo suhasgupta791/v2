@@ -1,0 +1,57 @@
+version: '3.5'
+
+services:
+   local_mqtt_broker:
+     container_name: "local_mqtt_broker"
+     image: alpine_mosquitto
+     volumes:
+       - /data/repos/w251/v2/week07/hw/jetson_local_scripts:/data
+     ports:
+       - 1884:1883
+     networks:
+       - face_detection
+     privileged: true
+     environment:
+         - COMPOSE_PROJECT_NAME="face_detection"
+         - DISPLAY=$DISPLAY
+     entrypoint: "/bin/bash -c mosquitto"
+     tty: true
+     
+   alpine_mqtt_forwarder:
+     container_name: "alpine_mqtt_forwarder"
+     image: alpine_mosquitto
+     volumes:
+       - /data/repos/w251/v2/week07/hw/jetson_local_scripts:/data
+     ports:
+       - 1885:1883
+     networks:
+       - face_detection
+     privileged: true
+     depends_on: 
+         - "local_mqtt_broker"
+     command: ["/data/wait_for.sh local_mqtt_broker:1883"] 
+     environment:
+         - COMPOSE_PROJECT_NAME="face_detection"
+         - DISPLAY=$DISPLAY
+     entrypoint: "/data/mqtt_forwarder.py"
+
+   usbCamFaceDetector:
+     container_name: "usbCamFaceDetector"
+     image: hw07_image
+     volumes:
+       - /data/repos/w251/v2/week07/hw/jetson_local_scripts:/data
+       - /tmp/.X11-unix:/tmp/.X11-unix
+       - /usr/share/opencv4/:/usr/share/opencv
+     ports:
+       - 1886:1883
+     networks:
+       - face_detection
+     privileged: true
+     environment:
+         - COMPOSE_PROJECT_NAME="face_detection"
+         - DISPLAY=$DISPLAY
+     entrypoint: "python3 /data/inference_usbCam_face.py 1 "
+ 
+networks:
+    face_detection:
+       driver: bridge
