@@ -1,0 +1,38 @@
+version: '3.5'
+
+services:
+   remote_mqtt_broker:
+     container_name: "remote_mqtt_broker"
+     image: alpine_mqtt
+     volumes:
+       - /root/v2/week07/hw/ibm_vsi_remote_scripts:/data
+     ports:
+       - 1883:1883
+     networks:
+       - face_detection
+     privileged: true
+     environment:
+         - COMPOSE_PROJECT_NAME="face_detection"
+     entrypoint: "/bin/bash -c mosquitto"
+     tty: true
+     
+   alpine_mqtt_forwarder:
+     container_name: "alpine_mqtt_client"
+     image: alpine_mqtt
+     volumes:
+       - /root/v2/week07/hw/ibm_vsi_remote_scripts:/data
+     ports:
+       - 1884:1883
+     networks:
+       - face_detection
+     privileged: true
+     depends_on: 
+         - "remote_mqtt_broker"
+     command: ["/data/wait_for.sh remote_mqtt_broker:1883"] 
+     environment:
+         - COMPOSE_PROJECT_NAME="face_detection"
+     entrypoint: "python /data/image_processor.py"
+
+networks:
+    face_detection:
+       driver: bridge
