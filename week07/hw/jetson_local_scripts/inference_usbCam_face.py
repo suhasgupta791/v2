@@ -7,16 +7,17 @@ import sys
 import time
 import numpy as np
 import tensorflow as tf
-import cv2
+import cv2 as cv
+import paho.mqtt.client as mqtt
 
 from utils import label_map_util
 from utils import visualization_utils_color as vis_util
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = './model/frozen_inference_graph_face.pb'
+PATH_TO_CKPT = '/data/model/frozen_inference_graph_face.pb'
 
 # List of the strings that is used to add correct label for each box.
-PATH_TO_LABELS = './protos/face_label_map.pbtxt'
+PATH_TO_LABELS = '/data/protos/face_label_map.pbtxt'
 
 NUM_CLASSES = 2
 
@@ -44,12 +45,11 @@ class TensoflowFaceDector(object):
             self.sess = tf.Session(graph=self.detection_graph, config=config)
             self.windowNotSet = True
 
-
     def run(self, image):
         """image: bgr image
         return (boxes, scores, classes, num_detections)
         """
-        image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image_np = cv.cvtColor(image, cv.COLOR_BGR2RGB)
 
         # the array based representation of the image will be used later in order to prepare the
         # result image with boxes and labels on it.
@@ -69,10 +69,27 @@ class TensoflowFaceDector(object):
             [boxes, scores, classes, num_detections],
             feed_dict={image_tensor: image_np_expanded})
         elapsed_time = time.time() - start_time
-        print('inference time cost: {}'.format(elapsed_time))
+        print('Faces detected: {} | inference time cost: {}'.format(len(np.where(scores>0.5)[0]),elapsed_time))
 
         return (boxes, scores, classes, num_detections)
 
+    def crop_face(self,box,img):
+        """box: coordinates of bounding box containing the detected face in the image
+           img: image 
+           croppedFrame: cropped image
+        """
+        y1,x1,y2,x2 = box.astype(int)  # note the order of x and y coordinates !!
+        croppedFrame = img[y1:y2,x1:x2]
+        size = min(img.shape[0],img.shape[1])
+        croppedFrame=cv.resize(croppedFrame,(size,size))
+        return croppedFrame
+
+    def displayImage(self,windowNotSet,image):
+        w,h = image.shape[0],image.shape[1]
+        if windowNotSet is True:
+           cv.namedWindow("Cropped face (%d, %d)" % (w, h), cv.WINDOW_NORMAL)
+           windowNotSet = False
+        cv.imshow("Cropped face (%d, %d)" % (w,h), image)
 
 if __name__ == "__main__":
     import sys
@@ -87,36 +104,39 @@ if __name__ == "__main__":
     	camID = sys.argv[1]
     
     tDetector = TensoflowFaceDector(PATH_TO_CKPT)
+    DETECTION_THRESHOLD = 0.5 # set a threshold for displaying detected faces
 
-    cap = cv2.VideoCapture(camID)
+    # Setup Mqtt client to host communication
+    host_ip='local_mqtt_broker' # docker ip address of the broker
+    port=1883 # mqtt port
+    keepalive=120 # timeout
+    topic="face_detection"
+    client=mqtt.Client()
+    client.connect(host_ip,port,keepalive)
+
+    cap = cv.VideoCapture(camID)
+
     windowNotSet = True
-    while True:
-        ret, image = cap.read()
+    while True: # read frames from video indefinitely 
+        ret, frame = cap.read()
         if ret == 0:
             break
-         
-        [h, w] = image.shape[:2]
-        print (h, w)
-        image = cv2.flip(image, 1)
 
-        (boxes, scores, classes, num_detections) = tDetector.run(image)
+        # Flip to maintain orientatio`n 
+        frame = cv.flip(frame, 1)
 
-        vis_util.visualize_boxes_and_labels_on_image_array(
-            image,
-            np.squeeze(boxes),
-            np.squeeze(classes).astype(np.int32),
-            np.squeeze(scores),
-            category_index,
-            use_normalized_coordinates=True,
-            line_thickness=4)
+        # Run the detector on a frame
+        (boxes, scores, classes, num_detections) = tDetector.run(frame)
 
-        if windowNotSet is True:
-            cv2.namedWindow("tensorflow based (%d, %d)" % (w, h), cv2.WINDOW_NORMAL)
-            windowNotSet = False
+        detected_indeces = np.where(scores[0] > DETECTION_THRESHOLD)[0]  # only update frame when  detection score is above threshold
+        for box in boxes[0][detected_indeces]:
+            normalized_box = box * np.array([frame.shape[0], frame.shape[1], frame.shape[0], frame.shape[1]])
+            cropped_face = tDetector.crop_face(normalized_box,frame)
+            tDetector.displayImage(windowNotSet,cropped_face)
+            msg = cropped_face.tobytes()  # convert to byte stream
+            client.publish(topic,msg)
 
-        cv2.imshow("tensorflow based (%d, %d)" % (w, h), image)
-        k = cv2.waitKey(1) & 0xff
+        k = cv.waitKey(1) & 0xff
         if k == ord('q') or k == 27:
             break
-
     cap.release()

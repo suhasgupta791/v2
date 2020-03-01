@@ -118,7 +118,6 @@ def draw_bounding_box_on_image_array(image,
                              use_normalized_coordinates)
   np.copyto(image, np.array(image_pil))
 
-
 def draw_bounding_box_on_image(image,
                                ymin,
                                xmin,
@@ -176,6 +175,7 @@ def draw_bounding_box_on_image(image,
         fill='black',
         font=font)
     text_bottom -= text_height - 2 * margin
+    return (left,right,top,bottom)
 
 
 def draw_bounding_boxes_on_image_array(image,

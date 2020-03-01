@@ -20,5 +20,5 @@ EXPOSE 9001
 ENV ARCH=aarch64
 ENV PATH /usr/sbin:$PATH
 
-
+WORKDIR /root
 

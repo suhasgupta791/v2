@@ -11,3 +11,8 @@ localMac/
 .local/
 data/
 workingdir/
+.keras*
+.bash_history*
+.python_history*
+.viminfo
+.nv*
