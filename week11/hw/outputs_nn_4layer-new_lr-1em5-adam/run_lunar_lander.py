@@ -35,7 +35,7 @@ if __name__=="__main__":
     training_thr = 5000
     total_itrs = 50000
 #    training_thr = 200
-#    total_itrs = 1000
+#    total_itrs = 10000
     successful_steps = []
 
     train_start=time.time()

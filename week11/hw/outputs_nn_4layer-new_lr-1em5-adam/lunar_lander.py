@@ -409,11 +409,11 @@ def heuristic(env, s):
 def nnmodel(input_dim):
     model = Sequential()
     model.add(Dense(32, input_dim=input_dim, activation='relu'))
-    model.add(Dense(32, activation='tanh'))
-    model.add(Dense(32, activation='tanh'))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dense(64, activation='relu'))
     model.add(Dense(16, activation='sigmoid'))
     model.add(Dense(1))
-#    optim = optimizers.Adam(learning_rate=1e-5, beta_1=0.9, beta_2=0.999, amsgrad=False)
-    optim = optimizers.SGD(learning_rate=1e-5)
+    optim = optimizers.Adam(learning_rate=1e-5, beta_1=0.9, beta_2=0.999, amsgrad=False)
+#    model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
     model.compile(loss='mean_squared_error', optimizer=optim, metrics=['accuracy'])
     return model
